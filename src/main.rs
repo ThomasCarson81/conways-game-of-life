@@ -25,16 +25,7 @@ async fn main() {
     let mut grid_1 = [[false; 64]; 64]; // Create a grid of 64x64 cells initialized to 0
     let mut grid_2 = [[false; 64]; 64]; // Create a second grid for the next generation
 
-    // Initialize the grid with a random pattern
-    for y in 0..64 {
-        for x in 0..64 {
-            grid_1[x][y] = rand::gen_range(0, 2) == 1;
-        }
-    }
-
-    // grid_1[30][30] = true;
-    // grid_1[30][31] = true;
-    // grid_1[30][32] = true;
+    randomise_grid(&mut grid_1); // Randomly populate the first grid
 
     loop {
         let frame_start = Instant::now();
@@ -44,12 +35,24 @@ async fn main() {
         // Swap the grids
         std::mem::swap(&mut grid_1, &mut grid_2);
 
+        if is_key_pressed(KeyCode::R) {
+            randomise_grid(&mut grid_1);
+        }
+
         let elapsed = frame_start.elapsed();
         if elapsed < target_frame_time {
             sleep(target_frame_time - elapsed);
         }
 
         next_frame().await;
+    }
+}
+
+fn randomise_grid(grid: &mut [[bool; 64]; 64]) {
+    for y in 0..64 {
+        for x in 0..64 {
+            grid[x][y] = rand::gen_range(0, 2) == 1;
+        }
     }
 }
 
