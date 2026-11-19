@@ -18,6 +18,7 @@ fn window_conf() -> Conf {
 async fn main() {
     let generations_per_sec = 10.0;
     let mut generation_time = Duration::from_secs_f64(1.0 / generations_per_sec);
+    let pause_time = Duration::new(u64::MAX, 0);
 
     let mut grid_1 = [[false; 64]; 64]; // Create a grid of 64x64 cells initialized to 0
     let mut grid_2 = [[false; 64]; 64]; // Create a second grid for the next generation
@@ -34,16 +35,15 @@ async fn main() {
             simulate(&grid_1, &mut grid_2);
             std::mem::swap(&mut grid_1, &mut grid_2);
             last_frame = Instant::now(); // Reset the frame start time
-        } else {
         }
 
         render(&grid_1);
 
         if is_key_pressed(KeyCode::P) {
-            if generation_time == Duration::new(u64::MAX, 0) {
-                generation_time = Duration::from_secs_f64(1.0 / generations_per_sec); // Resume simulation at 10 generations per second
+            if generation_time == pause_time {
+                generation_time = Duration::from_secs_f64(1.0 / generations_per_sec); // Resume
             } else {
-                generation_time = Duration::new(u64::MAX, 0); // Pause simulation
+                generation_time = pause_time; // Pause
             }
         }
 
