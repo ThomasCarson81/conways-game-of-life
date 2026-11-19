@@ -17,7 +17,7 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     let generations_per_sec = 10.0;
-    let generation_time = Duration::from_secs_f64(1.0 / generations_per_sec);
+    let mut generation_time = Duration::from_secs_f64(1.0 / generations_per_sec);
 
     let mut grid_1 = [[false; 64]; 64]; // Create a grid of 64x64 cells initialized to 0
     let mut grid_2 = [[false; 64]; 64]; // Create a second grid for the next generation
@@ -39,8 +39,19 @@ async fn main() {
 
         render(&grid_1);
 
+        if is_key_pressed(KeyCode::P) {
+            if generation_time == Duration::new(u64::MAX, 0) {
+                generation_time = Duration::from_secs_f64(1.0 / generations_per_sec); // Resume simulation at 10 generations per second
+            } else {
+                generation_time = Duration::new(u64::MAX, 0); // Pause simulation
+            }
+        }
+
         if is_key_pressed(KeyCode::R) {
             randomise_grid(&mut grid_1);
+        }
+        if is_key_pressed(KeyCode::C) {
+            grid_1 = [[false; 64]; 64]; // Clear the grid
         }
         next_frame().await;
     }
