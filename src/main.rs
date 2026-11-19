@@ -53,6 +53,24 @@ async fn main() {
         if is_key_pressed(KeyCode::C) {
             grid_1 = [[false; 64]; 64]; // Clear the grid
         }
+        if is_mouse_button_down(MouseButton::Left) {
+            let mouse_pos = mouse_position();
+            let cell_size = 10.0;
+            let x = (mouse_pos.0 / cell_size) as usize;
+            let y = (mouse_pos.1 / cell_size) as usize;
+            if x < 64 && y < 64 {
+                grid_1[x][y] = true; // Set the cell state to alive
+            }
+        }
+        if is_mouse_button_down(MouseButton::Right) {
+            let mouse_pos = mouse_position();
+            let cell_size = 10.0;
+            let x = (mouse_pos.0 / cell_size) as usize;
+            let y = (mouse_pos.1 / cell_size) as usize;
+            if x < 64 && y < 64 {
+                grid_1[x][y] = false; // Set the cell state to dead
+            }
+        }
         next_frame().await;
     }
 }
