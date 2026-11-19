@@ -16,14 +16,33 @@ fn window_conf() -> Conf {
 const CELL_SIZE: f32 = 10.0; // Size of each cell in pixels
 const GRID_WIDTH: usize = 64; // Number of cells in the grid width
 const GRID_HEIGHT: usize = 64; // Number of cells in the grid height
+
+type Grid = [u64; GRID_HEIGHT]; // 64x64 grid, bits in each u64 = x, each u64 = y
+
+fn empty_grid() -> Grid {
+    [0; 64] // Initialize a grid of 64 rows, each with 64 bits set to 0
+}
+
+fn get(grid: &Grid, x: usize, y: usize) -> bool {
+    (grid[y] >> x) & 1 == 1
+}
+
+fn set(grid: &mut Grid, x: usize, y: usize, alive: bool) {
+    if alive {
+        grid[y] |= 1 << x;
+    } else {
+        grid[y] &= !(1 << x);
+    }
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
-    let generations_per_sec = 10.0;
+    let generations_per_sec = 30.0;
     let mut generation_time = Duration::from_secs_f64(1.0 / generations_per_sec);
     let pause_time = Duration::new(u64::MAX, 0);
 
-    let mut grid_1 = [[false; GRID_WIDTH]; GRID_HEIGHT]; // Create a grid of 64x64 cells initialized to 0
-    let mut grid_2 = [[false; GRID_WIDTH]; GRID_HEIGHT]; // Create a second grid for the next generation
+    let mut grid_1 = empty_grid(); // Create a grid of 64x64 cells initialized to 0
+    let mut grid_2 = empty_grid(); // Create a second grid for the next generation
 
     randomise_grid(&mut grid_1); // Randomly populate the first grid
 
@@ -53,46 +72,52 @@ async fn main() {
             randomise_grid(&mut grid_1);
         }
         if is_key_pressed(KeyCode::C) {
-            grid_1 = [[false; GRID_WIDTH]; GRID_HEIGHT]; // Clear the grid
+            grid_1 = empty_grid(); // Clear the grid
         }
         let mouse_pos = mouse_position();
         let x = (mouse_pos.0 / CELL_SIZE) as usize;
         let y = (mouse_pos.1 / CELL_SIZE) as usize;
         if x < GRID_WIDTH && y < GRID_HEIGHT {
-            grid_1[x][y] = if is_mouse_button_down(MouseButton::Left) {
-                true
-            } else if is_mouse_button_down(MouseButton::Right) {
-                false
-            } else {
-                grid_1[x][y] // Keep the current state if no mouse button is pressed
-            };
+            let current_state = get(&grid_1, x, y);
+            set(
+                &mut grid_1,
+                x,
+                y,
+                if is_mouse_button_down(MouseButton::Left) {
+                    true
+                } else if is_mouse_button_down(MouseButton::Right) {
+                    false
+                } else {
+                    current_state // Keep the current state if no mouse button is pressed
+                },
+            );
         }
         next_frame().await;
     }
 }
 
-fn randomise_grid(grid: &mut [[bool; GRID_WIDTH]; GRID_HEIGHT]) {
-    for y in 0..GRID_HEIGHT {
-        for x in 0..GRID_WIDTH {
-            grid[x][y] = rand::gen_range(0, 2) == 1;
-        }
+fn randomise_grid(grid: &mut Grid) {
+    for row in grid.iter_mut() {
+        *row = ((rand::rand() as u64) << 32) | rand::rand() as u64;
     }
 }
 
-fn simulate(
-    current_grid: &[[bool; GRID_WIDTH]; GRID_HEIGHT],
-    next_grid: &mut [[bool; GRID_WIDTH]; GRID_HEIGHT],
-) {
+fn simulate(current_grid: &Grid, next_grid: &mut Grid) {
     for y in 0..GRID_HEIGHT {
         for x in 0..GRID_WIDTH {
-            let cell = current_grid[x][y];
+            let cell = get(current_grid, x, y);
             let alive_neighbors = count_alive_neighbors(&current_grid, x, y);
-            next_grid[x][y] = matches!((cell, alive_neighbors), (true, 2 | 3) | (false, 3));
+            set(
+                next_grid,
+                x,
+                y,
+                matches!((cell, alive_neighbors), (true, 2 | 3) | (false, 3)),
+            );
         }
     }
 }
 
-fn count_alive_neighbors(grid: &[[bool; GRID_WIDTH]; GRID_HEIGHT], x: usize, y: usize) -> u32 {
+fn count_alive_neighbors(grid: &Grid, x: usize, y: usize) -> u32 {
     let mut count = 0;
     for dy in -1..=1 {
         for dx in -1..=1 {
@@ -106,7 +131,7 @@ fn count_alive_neighbors(grid: &[[bool; GRID_WIDTH]; GRID_HEIGHT], x: usize, y: 
                 && neighbor_y >= 0
                 && neighbor_y < GRID_HEIGHT as isize
             {
-                if grid[neighbor_x as usize][neighbor_y as usize] {
+                if get(grid, neighbor_x as usize, neighbor_y as usize) {
                     count += 1;
                 }
             }
@@ -115,10 +140,10 @@ fn count_alive_neighbors(grid: &[[bool; GRID_WIDTH]; GRID_HEIGHT], x: usize, y: 
     count
 }
 
-fn render(grid: &[[bool; GRID_WIDTH]; GRID_HEIGHT]) {
+fn render(grid: &Grid) {
     for y in 0..GRID_HEIGHT {
         for x in 0..GRID_WIDTH {
-            let color = if grid[x][y] { WHITE } else { BLACK };
+            let color = if get(grid, x, y) { WHITE } else { BLACK };
             draw_rectangle(
                 x as f32 * CELL_SIZE,
                 y as f32 * CELL_SIZE,
