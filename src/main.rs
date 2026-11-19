@@ -1,7 +1,4 @@
-use std::{
-    thread::sleep,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use macroquad::prelude::*;
 
@@ -19,31 +16,32 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let target_fps = 15.0;
-    let target_frame_time = Duration::from_secs_f64(1.0 / target_fps);
+    let generations_per_sec = 10.0;
+    let generation_time = Duration::from_secs_f64(1.0 / generations_per_sec);
 
     let mut grid_1 = [[false; 64]; 64]; // Create a grid of 64x64 cells initialized to 0
     let mut grid_2 = [[false; 64]; 64]; // Create a second grid for the next generation
 
     randomise_grid(&mut grid_1); // Randomly populate the first grid
 
+    let mut do_sim; // Flag to control simulation state
+    let mut last_frame = Instant::now(); // Reset the frame start time
     loop {
-        let frame_start = Instant::now();
-        clear_background(BLACK);
+        let elapsed = last_frame.elapsed();
+        do_sim = elapsed >= generation_time; // Check if we should simulate based on elapsed time
+        if do_sim {
+            clear_background(BLACK);
+            simulate(&grid_1, &mut grid_2);
+            std::mem::swap(&mut grid_1, &mut grid_2);
+            last_frame = Instant::now(); // Reset the frame start time
+        } else {
+        }
+
         render(&grid_1);
-        simulate(&grid_1, &mut grid_2);
-        // Swap the grids
-        std::mem::swap(&mut grid_1, &mut grid_2);
 
         if is_key_pressed(KeyCode::R) {
             randomise_grid(&mut grid_1);
         }
-
-        let elapsed = frame_start.elapsed();
-        if elapsed < target_frame_time {
-            sleep(target_frame_time - elapsed);
-        }
-
         next_frame().await;
     }
 }
