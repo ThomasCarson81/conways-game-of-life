@@ -1,0 +1,115 @@
+use std::{
+    thread::sleep,
+    time::{Duration, Instant},
+};
+
+use macroquad::prelude::*;
+
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Conway's Game of Life".to_owned(),
+        window_resizable: false, // Prevents user resizing
+        fullscreen: false,
+        window_width: 640,  // Set the window width to 640 pixels
+        window_height: 640, // Set the window height to 640 pixels
+
+        ..Default::default() // Keeps default settings for everything else
+    }
+}
+
+#[macroquad::main(window_conf)]
+async fn main() {
+    let target_fps = 15.0;
+    let target_frame_time = Duration::from_secs_f64(1.0 / target_fps);
+
+    let mut grid_1 = [[false; 64]; 64]; // Create a grid of 64x64 cells initialized to 0
+    let mut grid_2 = [[false; 64]; 64]; // Create a second grid for the next generation
+
+    // Initialize the grid with a random pattern
+    for y in 0..64 {
+        for x in 0..64 {
+            grid_1[x][y] = rand::gen_range(0, 2) == 1;
+        }
+    }
+
+    // grid_1[30][30] = true;
+    // grid_1[30][31] = true;
+    // grid_1[30][32] = true;
+
+    loop {
+        let frame_start = Instant::now();
+        clear_background(BLACK);
+        render(&grid_1);
+        simulate(&grid_1, &mut grid_2);
+        // Swap the grids
+        std::mem::swap(&mut grid_1, &mut grid_2);
+
+        let elapsed = frame_start.elapsed();
+        if elapsed < target_frame_time {
+            sleep(target_frame_time - elapsed);
+        }
+
+        next_frame().await;
+    }
+}
+
+fn simulate(current_grid: &[[bool; 64]; 64], next_grid: &mut [[bool; 64]; 64]) {
+    for y in 0..64 {
+        for x in 0..64 {
+            let cell = current_grid[x][y];
+            let alive_neighbors = count_alive_neighbors(&current_grid, x, y);
+
+            // Apply the rules of Conway's Game of Life
+            if cell {
+                // Cell is alive
+                if alive_neighbors < 2 || alive_neighbors > 3 {
+                    next_grid[x][y] = false; // Cell dies
+                } else {
+                    next_grid[x][y] = true; // Cell stays alive
+                }
+            } else {
+                // Cell is dead
+                if alive_neighbors == 3 {
+                    next_grid[x][y] = true; // Cell becomes alive
+                } else {
+                    next_grid[x][y] = false; // Cell stays dead
+                }
+            }
+        }
+    }
+}
+
+fn count_alive_neighbors(grid: &[[bool; 64]; 64], x: usize, y: usize) -> u32 {
+    let mut count = 0;
+    for dy in -1..=1 {
+        for dx in -1..=1 {
+            if dx == 0 && dy == 0 {
+                continue; // Skip the cell itself
+            }
+            let neighbor_x = x as isize + dx;
+            let neighbor_y = y as isize + dy;
+            if neighbor_x >= 0 && neighbor_x < 64 && neighbor_y >= 0 && neighbor_y < 64 {
+                if grid[neighbor_x as usize][neighbor_y as usize] {
+                    count += 1;
+                }
+            }
+        }
+    }
+    count
+}
+
+fn render(grid: &[[bool; 64]; 64]) {
+    let cell_size = 10.0; // Size of each cell in pixels
+    for y in 0..64 {
+        for x in 0..64 {
+            let color = if grid[x][y] { WHITE } else { BLACK };
+            draw_rectangle(
+                x as f32 * cell_size,
+                y as f32 * cell_size,
+                cell_size,
+                cell_size,
+                color,
+            );
+        }
+    }
+}
