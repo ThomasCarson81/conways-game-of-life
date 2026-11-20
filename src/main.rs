@@ -1,6 +1,6 @@
-use std::time::{Duration, Instant};
-
 use macroquad::prelude::*;
+use rfd::FileDialog;
+use std::time::{Duration, Instant};
 
 fn window_conf() -> Conf {
     Conf {
@@ -73,6 +73,26 @@ async fn main() {
         }
         if is_key_pressed(KeyCode::C) {
             grid_1 = empty_grid(); // Clear the grid
+        }
+        if is_key_pressed(KeyCode::S) {
+            if let Some(path) = FileDialog::new()
+                .add_filter("Life grid", &["life"])
+                .set_file_name("grid.life")
+                .save_file()
+            {
+                save_grid_to_file(&grid_1, path.to_str().unwrap());
+            }
+        }
+        if is_key_pressed(KeyCode::L) {
+            if let Some(path) = FileDialog::new()
+                .add_filter("Life grid", &["life"])
+                .pick_file()
+            {
+                match load(path.to_str().unwrap()) {
+                    Ok(g) => grid_1 = g,
+                    Err(e) => println!("load failed: {e}"),
+                }
+            }
         }
         let mouse_pos = mouse_position();
         let x = (mouse_pos.0 / CELL_SIZE) as usize;
@@ -153,4 +173,24 @@ fn render(grid: &Grid) {
             );
         }
     }
+}
+
+fn save_grid_to_file(grid: &Grid, filename: &str) {
+    let bytes: Vec<u8> = grid.iter().flat_map(|row| row.to_le_bytes()).collect();
+    std::fs::write(filename, bytes).expect("Failed to write grid to file");
+}
+
+fn load(path: &str) -> std::io::Result<Grid> {
+    let bytes = std::fs::read(path)?;
+    if bytes.len() != GRID_HEIGHT * 8 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "wrong file size",
+        ));
+    }
+    let mut grid = [0u64; GRID_HEIGHT];
+    for (row, chunk) in grid.iter_mut().zip(bytes.chunks_exact(8)) {
+        *row = u64::from_le_bytes(chunk.try_into().unwrap());
+    }
+    Ok(grid)
 }
