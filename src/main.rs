@@ -5,22 +5,22 @@ use std::time::{Duration, Instant};
 fn window_conf() -> Conf {
     Conf {
         window_title: "Conway's Game of Life".to_owned(),
-        window_resizable: false, // Prevents user resizing
+        window_resizable: false,
         fullscreen: false,
-        window_width: 640,    // Set the window width to 640 pixels
-        window_height: 640,   // Set the window height to 640 pixels
-        ..Default::default()  // Keeps default settings for everything else
+        window_width: 640,
+        window_height: 640,
+        ..Default::default()
     }
 }
 
-const CELL_SIZE: f32 = 10.0; // Size of each cell in pixels
-const GRID_WIDTH: usize = 64; // Number of cells in the grid width
-const GRID_HEIGHT: usize = 64; // Number of cells in the grid height
+const CELL_SIZE: f32 = 10.0;
+const GRID_WIDTH: usize = 64;
+const GRID_HEIGHT: usize = 64;
 
 type Grid = [u64; GRID_HEIGHT]; // 64x64 grid, bits in each u64 = x, each u64 = y
 
 fn empty_grid() -> Grid {
-    [0; 64] // Initialize a grid of 64 rows, each with 64 bits set to 0
+    [0; GRID_HEIGHT] // Initialize a grid of 64 rows, each with 64 bits set to 0
 }
 
 fn get(grid: &Grid, x: usize, y: usize) -> bool {
@@ -41,13 +41,15 @@ async fn main() {
     let mut generation_time = Duration::from_secs_f64(1.0 / generations_per_sec);
     let pause_time = Duration::new(u64::MAX, 0);
 
-    let mut grid_1 = empty_grid(); // Create a grid of 64x64 cells initialized to 0
+    let mut grid_1 = empty_grid(); // Create a grid of 64x64 dead cells
     let mut grid_2 = empty_grid(); // Create a second grid for the next generation
 
     randomise_grid(&mut grid_1); // Randomly populate the first grid
 
     let mut do_sim; // Flag to control simulation state
     let mut last_frame = Instant::now(); // Reset the frame start time
+
+    let mut show_grid_lines = false; // Flag to control grid line visibility
     loop {
         let elapsed = last_frame.elapsed();
         do_sim = elapsed >= generation_time; // Check if we should simulate based on elapsed time
@@ -112,6 +114,14 @@ async fn main() {
                 },
             );
         }
+
+        if is_key_pressed(KeyCode::G) {
+            show_grid_lines = !show_grid_lines;
+        }
+
+        if show_grid_lines {
+            render_grid_lines();
+        }
         next_frame().await;
     }
 }
@@ -172,6 +182,30 @@ fn render(grid: &Grid) {
                 color,
             );
         }
+    }
+}
+
+fn render_grid_lines() {
+    let line_thickness = 0.5;
+    for x in 0..=GRID_WIDTH {
+        draw_line(
+            x as f32 * CELL_SIZE,
+            0.0,
+            x as f32 * CELL_SIZE,
+            GRID_HEIGHT as f32 * CELL_SIZE,
+            line_thickness,
+            GRAY,
+        );
+    }
+    for y in 0..=GRID_HEIGHT {
+        draw_line(
+            0.0,
+            y as f32 * CELL_SIZE,
+            GRID_WIDTH as f32 * CELL_SIZE,
+            y as f32 * CELL_SIZE,
+            line_thickness,
+            GRAY,
+        );
     }
 }
 
